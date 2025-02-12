@@ -1,5 +1,6 @@
 const express = require("express");
 const Product = require("../models/Product");
+const { compressImage } = require("../utils/imageUtils");
 
 const router = express.Router();
 const validCategories = ["HTML & CSS", "React-js", "Next-js", "Node-js", "JavaScript"];
@@ -23,7 +24,22 @@ router.post("/", async (req, res) => {
       return res.status(400).json({ error: "التصنيف غير صالح" });
     }
 
-    const newProduct = new Product({ name, description, image, githubLink, projectLink, category });
+    // إذا كانت الصورة موجودة، قم بضغطها
+    let compressedImage = image;
+    if (image) {
+      const imageBuffer = Buffer.from(image, "base64"); // تحويل base64 إلى Buffer
+      compressedImage = (await compressImage(imageBuffer)).toString("base64"); // ضغط الصورة وتحويلها إلى base64
+    }
+
+    const newProduct = new Product({
+      name,
+      description,
+      image: compressedImage,
+      githubLink,
+      projectLink,
+      category,
+    });
+
     await newProduct.save();
     res.status(201).json(newProduct);
   } catch (error) {
@@ -34,12 +50,32 @@ router.post("/", async (req, res) => {
 // تحديث منتج
 router.put("/:id", async (req, res) => {
   try {
-    const { category } = req.body;
+    const { name, description, image, githubLink, projectLink, category } = req.body;
+
     if (!validCategories.includes(category)) {
       return res.status(400).json({ error: "التصنيف غير صالح" });
     }
 
-    const updatedProduct = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    // إذا كانت الصورة موجودة، قم بضغطها
+    let compressedImage = image;
+    if (image) {
+      const imageBuffer = Buffer.from(image, "base64"); // تحويل base64 إلى Buffer
+      compressedImage = (await compressImage(imageBuffer)).toString("base64"); // ضغط الصورة وتحويلها إلى base64
+    }
+
+    const updatedProduct = await Product.findByIdAndUpdate(
+      req.params.id,
+      {
+        name,
+        description,
+        image: compressedImage,
+        githubLink,
+        projectLink,
+        category,
+      },
+      { new: true }
+    );
+
     res.json(updatedProduct);
   } catch (error) {
     res.status(500).json({ error: error.message });
